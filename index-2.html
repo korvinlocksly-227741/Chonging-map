@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Чунцин — компактная карта и маршруты</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+html,body,#map{height:100%;margin:0}
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+.leaflet-control-layers{font-size:13px}
+.num{width:28px;height:28px;border-radius:50%;background:white;border:2px solid #222;text-align:center;line-height:24px;font-weight:700;box-shadow:0 1px 5px rgba(0,0,0,.35)}
+.hotel{width:34px;height:34px;border-radius:7px;background:white;border:3px solid #111;text-align:center;line-height:28px;font-weight:800;box-shadow:0 1px 5px rgba(0,0,0,.45)}
+.legend{background:rgba(255,255,255,.94);padding:8px 10px;border-radius:8px;box-shadow:0 1px 6px rgba(0,0,0,.25);font-size:12px;line-height:1.4}
+.legend b{display:block;margin-bottom:4px}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const pts = [
+ {n:0,name:'Отель — Qianhe Zhixuan High-View Hotel',lat:29.559825,lon:106.582473,group:'base',time:'—',note:'База у Jiefangbei / Xiaoshizi'},
+ {n:1,name:'Liziba Station',lat:29.553629,lon:106.537916,group:'west',time:'30–45 мин',note:'Монорельс проходит сквозь жилой дом'},
+ {n:2,name:'Eling Testbed 2 / Second Factory',lat:29.5498,lon:106.5580,group:'west',time:'45–60 мин',note:'Бывшая типография и творческий квартал'},
+ {n:3,name:'Kuixinglou Square',lat:29.560258,lon:106.573618,group:'center',time:'20–30 мин',note:'«8D Chongqing»: площадь на уровне верхних этажей'},
+ {n:4,name:'Raffles City / Exploration Deck',lat:29.5676,lon:106.58321,group:'center',time:'75–90 мин',note:'Смотровая; лучше перед закатом'},
+ {n:5,name:'Hongyadong',lat:29.56507,lon:106.5753,group:'center',time:'45–75 мин',note:'Главный вечерний архитектурный комплекс'},
+ {n:6,name:'Yangtze River Cableway — North Station',lat:29.558112,lon:106.582732,group:'center',time:'Финиш переезда',note:'Сюда приезжаем с южного берега; дальше пешком к отелю'},
+ {n:7,name:'Xiahaoli / Longmenhao',lat:29.557588,lon:106.595746,group:'south',time:'60–90 мин',note:'Исторический квартал на южном берегу; проходить в сторону южной станции канатки'},
+ {n:8,name:'Jiefangbei',lat:29.56011,lon:106.57337,group:'center',time:'30–45 мин',note:'Центральная площадь и пешеходный район'},
+ {n:9,name:'Shibati',lat:29.5555,lon:106.5745,group:'center',time:'45–60 мин',note:'Лестницы и исторический квартал'},
+ {n:10,name:'Shancheng Alley',lat:29.552845,lon:106.565222,group:'center',time:'60–90 мин',note:'Старый склон, лестницы и виды на реку'},
+ {n:11,name:'Huguang Guild Hall',lat:29.56052,lon:106.58272,group:'center',time:'60–75 мин',note:'Архитектура эпохи Цин'}
+];
+
+const transit = [
+ {label:'M',name:'Shangxinjie — метро',lat:29.55557,lon:106.58981,note:'После Huguang: Line 6 до Shangxinjie, затем к Xiahaoli'},
+ {label:'S',name:'Yangtze River Cableway — South Station',lat:29.552721,lon:106.593419,note:'Отсюда едем по канатке South → North'}
+];
+
+const map = L.map('map').setView([29.558,106.575],14);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'&copy; OpenStreetMap contributors', maxZoom:19}).addTo(map);
+
+const groups = {
+ 'Все точки': L.layerGroup().addTo(map),
+ 'Маршрут 1 — вечер приезда': L.layerGroup(),
+ 'Маршрут 2 — полный день': L.layerGroup()
+};
+
+const byN = {};
+pts.forEach(p=>{
+ byN[p.n]=p;
+ const cls=p.n===0?'hotel':'num';
+ const icon=L.divIcon({className:'',html:`<div class="${cls}">${p.n===0?'H':p.n}</div>`,iconSize:p.n===0?[34,34]:[28,28],iconAnchor:p.n===0?[17,17]:[14,14]});
+ L.marker([p.lat,p.lon],{icon}).bindPopup(`<b>${p.n===0?'Отель':p.n+'. '+p.name}</b><br>${p.time}<br>${p.note}`).addTo(groups['Все точки']);
+});
+
+transit.forEach(p=>{
+ const icon=L.divIcon({className:'',html:`<div class="num">${p.label}</div>`,iconSize:[28,28],iconAnchor:[14,14]});
+ L.marker([p.lat,p.lon],{icon}).bindPopup(`<b>${p.name}</b><br>${p.note}`).addTo(groups['Все точки']);
+});
+
+function coords(seq){return seq.map(n=>[byN[n].lat,byN[n].lon]);}
+// Вечер приезда: отель → Raffles → Hongya → Kuixinglou → Jiefangbei → отель
+const r1=[0,4,5,3,8,0];
+// Полный день: отель → Liziba → Eling → Shancheng → Shibati → Huguang → метро Shangxinjie → Xiahaoli/Longmenhao → South Cableway → North Cableway → отель
+const r2=[
+ [byN[0].lat,byN[0].lon],[byN[1].lat,byN[1].lon],[byN[2].lat,byN[2].lon],
+ [byN[10].lat,byN[10].lon],[byN[9].lat,byN[9].lon],[byN[11].lat,byN[11].lon],
+ [29.55557,106.58981],[byN[7].lat,byN[7].lon],[29.552721,106.593419],
+ [byN[6].lat,byN[6].lon],[byN[0].lat,byN[0].lon]
+];
+L.polyline(coords(r1),{weight:5,opacity:.85}).bindPopup('Маршрут 1 — вечер приезда').addTo(groups['Маршрут 1 — вечер приезда']);
+L.polyline(r2,{weight:5,opacity:.8,dashArray:'10 7'}).bindPopup('Маршрут 2 — полный день: возвращение канаткой South → North').addTo(groups['Маршрут 2 — полный день']);
+
+L.control.layers(null,groups,{collapsed:true,position:'topright'}).addTo(map);
+const legend=L.control({position:'bottomleft'});
+legend.onAdd=function(){const d=L.DomUtil.create('div','legend');d.innerHTML='<b>Чунцин</b>H — отель<br>1–11 — точки из актуальной таблицы<br>M — метро Shangxinjie · S — южная станция канатки<br>Маршруты включаются справа сверху';return d;};
+legend.addTo(map);
+
+map.fitBounds(L.latLngBounds([...pts.map(p=>[p.lat,p.lon]),...transit.map(p=>[p.lat,p.lon])]).pad(0.08));
+</script>
+</body>
+</html>
